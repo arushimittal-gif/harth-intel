@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harth Builders · Intelligence Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0F1420;
+  --slate:#3B4556;
+  --mist:#8A95A8;
+  --fog:#C8CDD8;
+  --paper:#F5F6F8;
+  --white:#FFFFFF;
+  --accent:#0a1b30;
+  --accent2:#FF5733;
+  --gold:#E8A020;
+  --green:#14A870;
+  --surface:#FFFFFF;
+  --border:#E2E5EC;
+  --radius:10px;
+  --shadow:0 2px 12px rgba(15,20,32,0.08);
+  --shadow-lg:0 8px 32px rgba(15,20,32,0.12);
+}
+html{font-size:14px;scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+
+/* ─── TOPBAR ─── */
+#topbar{height:56px;background:var(--ink);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:1000;flex-shrink:0}
+.topbar-logo{font-family:'DM Serif Display',serif;color:var(--white);font-size:18px;letter-spacing:0.02em;white-space:nowrap}
+.topbar-logo span{color:var(--accent);font-size:11px;font-family:'DM Sans',sans-serif;font-weight:500;vertical-align:super;margin-left:4px;letter-spacing:0.06em}
+.topbar-divider{width:1px;height:24px;background:rgba(255,255,255,0.15)}
+.topbar-tabs{display:flex;gap:4px;flex:1}
+.tab-btn{background:none;border:none;color:rgba(255,255,255,0.55);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;padding:7px 14px;border-radius:6px;cursor:pointer;transition:all 0.18s;white-space:nowrap}
+.tab-btn:hover{color:var(--white);background:rgba(255,255,255,0.08)}
+.tab-btn.active{color:var(--white);background:var(--accent)}
+.topbar-right{display:flex;gap:10px;align-items:center;margin-left:auto;flex-shrink:0}
+.saved-view-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.18);color:var(--white);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all 0.18s;white-space:nowrap}
+.saved-view-btn:hover{background:rgba(255,255,255,0.18)}
+.live-badge{background:var(--green);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;letter-spacing:0.05em}
+
+/* ─── LAYOUT ─── */
+#app{display:flex;flex:1;min-height:0}
+#sidebar{width:260px;background:var(--white);border-right:1px solid var(--border);flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column}
+#main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+
+/* ─── SIDEBAR ─── */
+.sidebar-section{padding:16px 16px 8px;border-bottom:1px solid var(--border)}
+.sidebar-label{font-size:10px;font-weight:600;letter-spacing:0.1em;color:var(--mist);text-transform:uppercase;margin-bottom:10px}
+.filter-group{margin-bottom:12px}
+.filter-group label{display:block;font-size:12px;font-weight:500;color:var(--slate);margin-bottom:5px}
+.filter-group select,.filter-group input[type=range]{width:100%;font-family:'DM Sans',sans-serif;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--ink);background:var(--paper)}
+.filter-group select:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+.range-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--mist);margin-top:2px}
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer}
+.toggle-row input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px}
+.toggle-row span{font-size:12px;color:var(--slate)}
+.stat-chip{background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:6px}
+.stat-chip .sc-val{font-size:18px;font-weight:600;color:var(--ink)}
+.stat-chip .sc-lbl{font-size:10px;color:var(--mist);font-weight:500;letter-spacing:0.05em;text-transform:uppercase}
+.segment-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;margin-bottom:3px;transition:all 0.15s;border:1px solid transparent}
+.segment-chip:hover{background:var(--paper)}
+.segment-chip.active{background:#EEF3FF;border-color:#C2D0FF}
+.seg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.seg-name{font-size:12px;font-weight:500;color:var(--slate)}
+.seg-count{margin-left:auto;font-size:11px;color:var(--mist);background:var(--paper);padding:1px 7px;border-radius:10px}
+
+/* ─── VIEWS ─── */
+.view{display:none;flex:1;flex-direction:column}
+.view.active{display:flex}
+
+/* ─── HERO ─── */
+#view-overview{background:var(--paper)}
+.hero{padding:36px 32px 24px;border-bottom:1px solid var(--border)}
+.hero-eyebrow{font-size:11px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.hero-title{font-family:'DM Serif Display',serif;font-size:30px;line-height:1.15;color:var(--ink);max-width:640px;margin-bottom:8px}
+.hero-sub{font-size:14px;color:var(--slate);max-width:520px;line-height:1.6}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:20px 32px;border-bottom:1px solid var(--border)}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;position:relative;overflow:hidden}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;border-radius:3px 0 0 3px}
+.kpi-card.blue::before{background:var(--accent)}
+.kpi-card.orange::before{background:var(--accent2)}
+.kpi-card.gold::before{background:var(--gold)}
+.kpi-card.green::before{background:var(--green)}
+.kpi-num{font-size:28px;font-weight:600;color:var(--ink);line-height:1}
+.kpi-label{font-size:11px;color:var(--mist);font-weight:500;letter-spacing:0.05em;text-transform:uppercase;margin-top:4px}
+.kpi-delta{font-size:11px;color:var(--green);font-weight:500;margin-top:6px}
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px 32px;flex:1}
+.overview-grid .panel{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.panel-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.panel-title{font-size:13px;font-weight:600;color:var(--ink)}
+.panel-body{padding:18px}
+.case-study-card{border:1px solid var(--border);border-radius:8px;padding:14px 16px;cursor:pointer;transition:all 0.18s;margin-bottom:8px;display:flex;align-items:flex-start;gap:14px}
+.case-study-card:hover{border-color:var(--accent);box-shadow:var(--shadow)}
+.cs-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.cs-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px}
+.cs-desc{font-size:11px;color:var(--mist);line-height:1.5}
+.cs-arrow{margin-left:auto;color:var(--fog);font-size:16px;align-self:center}
+
+/* ─── MAP VIEW ─── */
+#view-map{flex-direction:column}
+.map-toolbar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.map-toolbar-title{font-size:13px;font-weight:600;color:var(--ink);margin-right:4px}
+.layer-btn{background:var(--paper);border:1px solid var(--border);color:var(--slate);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:5px 12px;border-radius:6px;cursor:pointer;transition:all 0.15s}
+.layer-btn.active{background:var(--ink);color:var(--white);border-color:var(--ink)}
+.map-container{flex:1;position:relative;min-height:400px}
+#leaflet-map{width:100%;height:100%}
+.map-legend{position:absolute;bottom:20px;right:20px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;z-index:500;box-shadow:var(--shadow)}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--slate);margin-bottom:4px}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.info-panel{position:absolute;top:20px;right:20px;width:280px;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:500;display:none}
+.info-panel.visible{display:block}
+.info-panel-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.info-panel-title{font-size:12px;font-weight:600;color:var(--ink)}
+.info-close{background:none;border:none;cursor:pointer;color:var(--mist);font-size:16px;line-height:1}
+.info-panel-body{padding:14px 16px}
+.info-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px}
+.info-key{font-size:11px;color:var(--mist);font-weight:500;flex-shrink:0}
+.info-val{font-size:12px;color:var(--ink);font-weight:500;text-align:right}
+.permit-badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600}
+.permit-badge.none{background:#FFE8E3;color:#D14020}
+.permit-badge.some{background:#FFF6D6;color:#A06010}
+.permit-badge.many{background:#E3F5EC;color:#107040}
+.satellite-note{font-size:10px;color:var(--mist);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);line-height:1.5}
+
+/* ─── TABLE VIEW ─── */
+.table-toolbar{background:var(--white);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.search-box{border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--paper);min-width:220px}
+.search-box:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+.toolbar-spacer{flex:1}
+.count-label{font-size:12px;color:var(--mist)}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table thead th{background:var(--paper);color:var(--mist);font-weight:600;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+.data-table thead th:hover{color:var(--ink)}
+.data-table thead th.sorted{color:var(--accent)}
+.data-table tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;cursor:pointer}
+.data-table tbody tr:hover{background:#F0F4FF}
+.data-table tbody td{padding:10px 14px;color:var(--ink);vertical-align:middle}
+.data-table tbody td:first-child{font-weight:500}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.pill-blue{background:#EEF3FF;color:#0a1b30}
+.pill-orange{background:#FFF0EC;color:#D14020}
+.pill-green{background:#E3F5EC;color:#107040}
+.pill-gold{background:#FFF6D6;color:#A06010}
+.pill-grey{background:var(--paper);color:var(--mist)}
+.table-wrapper{overflow-x:auto;overflow-y:auto;flex:1}
+
+/* ─── CHARTS PANEL ─── */
+#view-analytics{flex-direction:column}
+.analytics-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px;flex:1;overflow-y:auto}
+.chart-panel{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:18px;overflow:hidden}
+.chart-panel.wide{grid-column:span 2}
+.chart-title{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px}
+.chart-sub{font-size:11px;color:var(--mist);margin-bottom:16px}
+.chart-wrap{position:relative;height:220px}
+
+/* ─── SEGMENT BADGES ─── */
+.seg-label{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:0.05em;text-transform:uppercase}
+.seg-vil{background:#E8EDFF;color:#0a1b30}
+.seg-shore{background:#E3F5EC;color:#107040}
+.seg-crm{background:#FFF6D6;color:#A06010}
+
+/* ─── HOVER TOOLTIP ─── */
+.mapboxgl-popup{z-index:600}
+.lft-popup .leaflet-popup-content-wrapper{border-radius:var(--radius);box-shadow:var(--shadow-lg);border:1px solid var(--border);padding:0}
+.lft-popup .leaflet-popup-content{margin:12px 14px;min-width:180px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--ink);line-height:1.6}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--fog);border-radius:3px}
+
+/* ─── SAVED VIEWS DROPDOWN ─── */
+.sv-dropdown{position:absolute;top:56px;right:0;background:var(--white);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:2000;min-width:240px;overflow:hidden;display:none}
+.sv-dropdown.open{display:block}
+.sv-item{padding:11px 16px;font-size:13px;color:var(--ink);cursor:pointer;transition:background 0.1s;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.sv-item:last-child{border-bottom:none}
+.sv-item:hover{background:var(--paper)}
+.sv-icon{font-size:16px;width:24px;text-align:center}
+.sv-meta{font-size:10px;color:var(--mist)}
+
+/* ─── MOBILE ─── */
+@media(max-width:768px){
+  #sidebar{display:none}
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .overview-grid{grid-template-columns:1fr}
+  .analytics-grid{grid-template-columns:1fr}
+  .chart-panel.wide{grid-column:span 1}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div class="topbar-logo">Harth Builders<span>INTEL</span></div>
+  <div class="topbar-divider"></div>
+  <div class="topbar-tabs">
+    <button class="tab-btn active" onclick="switchView('overview')">Overview</button>
+    <button class="tab-btn" onclick="switchView('map')">Map View</button>
+    <button class="tab-btn" onclick="switchView('crm')">Ex-Clients</button>
+    <button class="tab-btn" onclick="switchView('villanova')">Villanova</button>
+    <button class="tab-btn" onclick="switchView('shore')">NJ Shore</button>
+    <button class="tab-btn" onclick="switchView('analytics')">Analytics</button>
+  </div>
+  <div class="topbar-right" style="position:relative">
+    <div class="live-badge">LIVE</div>
+    <button class="saved-view-btn" onclick="toggleSavedViews()">📌 Saved Views ▾</button>
+    <div class="sv-dropdown" id="sv-dropdown">
+      <div class="sv-item" onclick="loadSavedView('case1')"><span class="sv-icon">🏘️</span><div><div>Case Study 1 — Ex-Clients</div><div class="sv-meta">Email opted-in · Philadelphia Main Line</div></div></div>
+      <div class="sv-item" onclick="loadSavedView('case2')"><span class="sv-icon">🏛️</span><div><div>Case Study 2 — Villanova High Value</div><div class="sv-meta">Homes &gt;$1.5M · Low permit activity</div></div></div>
+      <div class="sv-item" onclick="loadSavedView('case3')"><span class="sv-icon">🌊</span><div><div>Case Study 3 — NJ Shore Cluster</div><div class="sv-meta">Avalon · Margate · Philly owners</div></div></div>
+      <div class="sv-item" onclick="loadSavedView('heatmap')"><span class="sv-icon">🔥</span><div><div>Heat Map — Renovation Density</div><div class="sv-meta">All segments combined</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Segments</div>
+    <div class="segment-chip active" id="seg-all" onclick="filterSegment('all')">
+      <div class="seg-dot" style="background:var(--accent)"></div>
+      <span class="seg-name">All Records</span>
+      <span class="seg-count">45</span>
+    </div>
+    <div class="segment-chip" id="seg-crm" onclick="filterSegment('crm')">
+      <div class="seg-dot" style="background:var(--gold)"></div>
+      <span class="seg-name">Ex-Clients (CRM)</span>
+      <span class="seg-count">15</span>
+    </div>
+    <div class="segment-chip" id="seg-vil" onclick="filterSegment('vil')">
+      <div class="seg-dot" style="background:var(--accent)"></div>
+      <span class="seg-name">Villanova Props</span>
+      <span class="seg-count">15</span>
+    </div>
+    <div class="segment-chip" id="seg-shore" onclick="filterSegment('shore')">
+      <div class="seg-dot" style="background:var(--green)"></div>
+      <span class="seg-name">NJ Shore</span>
+      <span class="seg-count">15</span>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Filters</div>
+    <div class="filter-group">
+      <label>State</label>
+      <select id="filter-state" onchange="applyFilters()">
+        <option value="">All States</option>
+        <option value="PA">Pennsylvania</option>
+        <option value="NJ">New Jersey</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Min Market Value</label>
+      <input type="range" id="filter-value" min="0" max="10000000" step="100000" value="0" oninput="updateRangeLabel(this,'filter-value-label');applyFilters()">
+      <div class="range-labels"><span id="filter-value-label">$0</span><span>$10M</span></div>
+    </div>
+    <div class="filter-group">
+      <label>Built Before</label>
+      <input type="range" id="filter-year" min="1900" max="2025" step="5" value="2025" oninput="updateRangeLabel(this,'filter-year-label');applyFilters()">
+      <div class="range-labels"><span>1900</span><span id="filter-year-label">2025</span></div>
+    </div>
+    <div class="filter-group">
+      <div class="toggle-row"><input type="checkbox" id="filter-email" onchange="applyFilters()"><span>Has Email</span></div>
+      <div class="toggle-row"><input type="checkbox" id="filter-linkedin" onchange="applyFilters()"><span>Has LinkedIn</span></div>
+      <div class="toggle-row"><input type="checkbox" id="filter-nopermit" onchange="applyFilters()"><span>No Permits Filed</span></div>
+    </div>
+  </div>
+  <div class="sidebar-section" style="border-bottom:none">
+    <div class="sidebar-label">Summary</div>
+    <div class="stat-chip">
+      <div class="sc-val" id="side-total">45</div>
+      <div class="sc-lbl">Records Shown</div>
+    </div>
+    <div class="stat-chip">
+      <div class="sc-val" id="side-email">15</div>
+      <div class="sc-lbl">With Email</div>
+    </div>
+    <div class="stat-chip">
+      <div class="sc-val" id="side-linkedin">13</div>
+      <div class="sc-lbl">LinkedIn Profiles</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main">
+
+  <!-- OVERVIEW -->
+  <div class="view active" id="view-overview">
+    <div class="hero">
+      <div class="hero-eyebrow">Intelligence Portal · Demo Build</div>
+      <div class="hero-title">Your data, finally working for you.</div>
+      <div class="hero-sub">45 properties and contacts across three high-value segments — Villanova Main Line, NJ Shore, and existing clients — mapped, filtered, and ready for hyper-targeted outreach.</div>
+    </div>
+    <div class="kpi-row">
+      <div class="kpi-card blue">
+        <div class="kpi-num">$1.53M</div>
+        <div class="kpi-label">Avg. Villanova Value</div>
+        <div class="kpi-delta">↑ All 15 properties &gt;$1.3M</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-num">$5.1M</div>
+        <div class="kpi-label">Avg. Shore Sale Price</div>
+        <div class="kpi-delta">↑ 12 of 15 owners in Philly area</div>
+      </div>
+      <div class="kpi-card gold">
+        <div class="kpi-num">15</div>
+        <div class="kpi-label">Ex-Clients w/ Full Data</div>
+        <div class="kpi-delta">↑ Email + Phone + LinkedIn</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-num">40</div>
+        <div class="kpi-label">Permit Records Found</div>
+        <div class="kpi-delta">↑ Gaps = renovation opportunity</div>
+      </div>
+    </div>
+    <div class="overview-grid">
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Case Studies</span><span style="font-size:11px;color:var(--mist)">Click to jump to view</span></div>
+        <div class="panel-body">
+          <div class="case-study-card" onclick="loadSavedView('case1')">
+            <div class="cs-icon" style="background:#FFF6D6">👥</div>
+            <div>
+              <div class="cs-title">Ex-Client Upsell Campaign</div>
+              <div class="cs-desc">15 contacts with full contact data — email, phone, LinkedIn. Segment by home type for kitchen, bath, and floor upsell mailers.</div>
+            </div>
+            <div class="cs-arrow">›</div>
+          </div>
+          <div class="case-study-card" onclick="loadSavedView('case2')">
+            <div class="cs-icon" style="background:#EEF3FF">🏛️</div>
+            <div>
+              <div class="cs-title">Villanova High-Value Prospects</div>
+              <div class="cs-desc">15 homes $1.3M–$1.7M on the Main Line. Older builds (1950–1991) with 1–3 permits each — prime renovation targets.</div>
+            </div>
+            <div class="cs-arrow">›</div>
+          </div>
+          <div class="case-study-card" onclick="loadSavedView('case3')">
+            <div class="cs-icon" style="background:#E3F5EC">🌊</div>
+            <div>
+              <div class="cs-title">NJ Shore Proximity Cluster</div>
+              <div class="cs-desc">Avalon, Margate &amp; Stone Harbor. 80% of owners have Philadelphia mailing addresses — your neighborhood, their vacation home.</div>
+            </div>
+            <div class="cs-arrow">›</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Renovation Opportunity Score</span></div>
+        <div class="panel-body" style="display:flex;flex-direction:column;gap:0">
+          <div style="font-size:11px;color:var(--mist);margin-bottom:14px">Score based on home age, permit activity, and market value. Higher = stronger candidate for outreach.</div>
+          <div id="reno-score-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP VIEW -->
+  <div class="view" id="view-map">
+    <div class="map-toolbar">
+      <span class="map-toolbar-title">Map View</span>
+      <button class="layer-btn active" id="btn-pins" onclick="setMapLayer('pins')">📍 Property Pins</button>
+      <button class="layer-btn" id="btn-heat" onclick="setMapLayer('heat')">🔥 Heat Map</button>
+      <button class="layer-btn" id="btn-cluster" onclick="setMapLayer('cluster')">⬡ Clusters</button>
+      <button class="layer-btn" id="btn-satellite" onclick="setMapLayer('satellite')">🛰 Satellite</button>
+      <div style="margin-left:auto;font-size:11px;color:var(--mist)">Click any pin for property details</div>
+    </div>
+    <div class="map-container">
+      <div id="leaflet-map"></div>
+      <div class="map-legend" id="map-legend">
+        <div style="font-size:11px;font-weight:600;color:var(--ink);margin-bottom:8px">Legend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Villanova Property</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>NJ Shore Property</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>Ex-Client (CRM)</div>
+      </div>
+      <div class="info-panel" id="info-panel">
+        <div class="info-panel-head">
+          <span class="info-panel-title" id="info-title">Property Details</span>
+          <button class="info-close" onclick="closeInfoPanel()">✕</button>
+        </div>
+        <div class="info-panel-body" id="info-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRM VIEW -->
+  <div class="view" id="view-crm">
+    <div class="table-toolbar">
+      <span style="font-size:13px;font-weight:600;color:var(--ink)">Ex-Clients</span>
+      <input class="search-box" id="crm-search" placeholder="Search by name, city, email…" oninput="renderCRMTable()">
+      <div class="toolbar-spacer"></div>
+      <span class="count-label" id="crm-count">15 contacts</span>
+      <button class="layer-btn" onclick="exportCSV('crm')">⬇ Export</button>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="crm-table">
+        <thead><tr>
+          <th onclick="sortTable('crm','name')">Name</th>
+          <th onclick="sortTable('crm','city')">City</th>
+          <th onclick="sortTable('crm','state')">State</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Contact Channels</th>
+          <th>LinkedIn</th>
+        </tr></thead>
+        <tbody id="crm-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VILLANOVA VIEW -->
+  <div class="view" id="view-villanova">
+    <div class="table-toolbar">
+      <span style="font-size:13px;font-weight:600;color:var(--ink)">Villanova Properties</span>
+      <input class="search-box" id="vil-search" placeholder="Search by address, owner…" oninput="renderVilTable()">
+      <select id="vil-permit-filter" onchange="renderVilTable()" style="font-family:'DM Sans';font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--ink);background:var(--paper)">
+        <option value="">All Permit Levels</option>
+        <option value="0">No Permits</option>
+        <option value="1">1 Permit</option>
+        <option value="2">2+ Permits</option>
+        <option value="3">3+ Permits</option>
+      </select>
+      <div class="toolbar-spacer"></div>
+      <span class="count-label" id="vil-count">15 properties</span>
+      <button class="layer-btn" onclick="exportCSV('vil')">⬇ Export</button>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="vil-table">
+        <thead><tr>
+          <th onclick="sortTable('vil','address')">Address</th>
+          <th onclick="sortTable('vil','owner')">Owner</th>
+          <th onclick="sortTable('vil','yearBuilt')">Built</th>
+          <th onclick="sortTable('vil','sqft')">Sq Ft</th>
+          <th onclick="sortTable('vil','beds')">Beds/Baths</th>
+          <th onclick="sortTable('vil','marketValue')">Market Value</th>
+          <th onclick="sortTable('vil','permitCount')">Permits</th>
+          <th>Reno Score</th>
+        </tr></thead>
+        <tbody id="vil-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SHORE VIEW -->
+  <div class="view" id="view-shore">
+    <div class="table-toolbar">
+      <span style="font-size:13px;font-weight:600;color:var(--ink)">NJ Shore Properties</span>
+      <input class="search-box" id="shore-search" placeholder="Search by address, city, owner…" oninput="renderShoreTable()">
+      <select id="shore-city-filter" onchange="renderShoreTable()" style="font-family:'DM Sans';font-size:12px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--ink);background:var(--paper)">
+        <option value="">All Cities</option>
+        <option value="Avalon">Avalon</option>
+        <option value="Margate City">Margate City</option>
+        <option value="Stone Harbor">Stone Harbor</option>
+        <option value="Longport">Longport</option>
+      </select>
+      <div class="toolbar-spacer"></div>
+      <span class="count-label" id="shore-count">15 properties</span>
+      <button class="layer-btn" onclick="exportCSV('shore')">⬇ Export</button>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table" id="shore-table">
+        <thead><tr>
+          <th onclick="sortTable('shore','address')">Property Address</th>
+          <th onclick="sortTable('shore','city')">City</th>
+          <th onclick="sortTable('shore','owner')">Owner</th>
+          <th onclick="sortTable('shore','sqft')">Sq Ft</th>
+          <th onclick="sortTable('shore','yearBuilt')">Built</th>
+          <th onclick="sortTable('shore','salePrice')">Last Sale Price</th>
+          <th onclick="sortTable('shore','lastYearTax')">Annual Tax</th>
+          <th>Owner Mail State</th>
+        </tr></thead>
+        <tbody id="shore-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="view" id="view-analytics">
+    <div class="analytics-grid">
+      <div class="chart-panel">
+        <div class="chart-title">Villanova — Market Value Distribution</div>
+        <div class="chart-sub">All 15 properties ranked by assessed market value</div>
+        <div class="chart-wrap"><canvas id="chart-vil-val"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-title">Villanova — Build Year vs. Permit Activity</div>
+        <div class="chart-sub">Older homes with fewer permits = renovation opportunity</div>
+        <div class="chart-wrap"><canvas id="chart-vil-permits"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-title">NJ Shore — Sale Prices by City</div>
+        <div class="chart-sub">Top sale prices across Avalon, Margate, Stone Harbor, Longport</div>
+        <div class="chart-wrap"><canvas id="chart-shore-city"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-title">CRM Contacts — Channel Coverage</div>
+        <div class="chart-sub">What outreach channels are available across your ex-client list</div>
+        <div class="chart-wrap"><canvas id="chart-crm-channels"></canvas></div>
+      </div>
+      <div class="chart-panel wide">
+        <div class="chart-title">Shore Owner Mailing Addresses — PA vs. Out-of-State</div>
+        <div class="chart-sub">Most Shore property owners have Philly-area primary addresses — your core market</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-shore-mail"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ─── DATA ───────────────────────────────────────────
+const vilData = [
+  {address:"1038 STATION RD, VILLANOVA, PA 19085",owner:"PARKER, THOMAS M & HELEN J",beds:6,baths:4.0,sqft:4750,yearBuilt:1962,marketValue:1675000,lastSalePrice:1400000,lastSaleDate:"2016-11-17",permitCount:3,permitDetails:"Building permits on file",lat:40.0385,lng:-75.3540,hasLinkedIn:false,renovationScore:90},
+  {address:"1805 STRATFORD RD, VILLANOVA, PA 19085",owner:"WALKER, RICHARD & MARGARET",beds:6,baths:4.0,sqft:4700,yearBuilt:1960,marketValue:1625000,lastSalePrice:1350000,lastSaleDate:"2016-12-09",permitCount:3,permitDetails:"Building permits on file",lat:40.0342,lng:-75.3510,hasLinkedIn:false,renovationScore:93},
+  {address:"2225 BROOKE RD, VILLANOVA, PA 19085",owner:"STEWART, JAMES E & SUSAN M",beds:5,baths:4.0,sqft:4300,yearBuilt:1986,marketValue:1625000,lastSalePrice:1375000,lastSaleDate:"2017-07-25",permitCount:2,permitDetails:"Building permits documented",lat:40.0290,lng:-75.3480,hasLinkedIn:false,renovationScore:56},
+  {address:"304 RADNOR CHESTER RD, VILLANOVA, PA 19085",owner:"WRIGHT, PAUL M & ELIZABETH A",beds:5,baths:4.0,sqft:4250,yearBuilt:1987,marketValue:1595000,lastSalePrice:1325000,lastSaleDate:"2017-06-21",permitCount:2,permitDetails:"Building permits on file",lat:40.0420,lng:-75.3590,hasLinkedIn:false,renovationScore:54},
+  {address:"76 WOODSTONE LN, VILLANOVA, PA 19085",owner:"ANDERSON, PATRICIA A",beds:5,baths:4.0,sqft:4200,yearBuilt:1980,marketValue:1575000,lastSalePrice:1300000,lastSaleDate:"2016-05-18",permitCount:2,permitDetails:"Building permits documented",lat:40.0310,lng:-75.3460,hasLinkedIn:false,renovationScore:64},
+  {address:"1720 VALLEY RD, VILLANOVA, PA 19085",owner:"SCOTT, LAWRENCE J & DIANE P",beds:6,baths:4.0,sqft:4600,yearBuilt:1958,marketValue:1575000,lastSalePrice:1300000,lastSaleDate:"2017-10-05",permitCount:3,permitDetails:"Building permits on file",lat:40.0355,lng:-75.3520,hasLinkedIn:false,renovationScore:96},
+  {address:"2151 COUNTRY LN, VILLANOVA, PA 19085",owner:"CLARK, JAMES P & LINDA",beds:5,baths:4.0,sqft:4100,yearBuilt:1986,marketValue:1545000,lastSalePrice:1275000,lastSaleDate:"2017-04-07",permitCount:2,permitDetails:"Building permits documented",lat:40.0275,lng:-75.3445,hasLinkedIn:false,renovationScore:56},
+  {address:"1512 FORGE RD, VILLANOVA, PA 19085",owner:"JOHNSON, THOMAS A",beds:6,baths:4.0,sqft:4650,yearBuilt:1955,marketValue:1525000,lastSalePrice:1250000,lastSaleDate:"2017-08-10",permitCount:3,permitDetails:"Building permits on file",lat:40.0370,lng:-75.3555,hasLinkedIn:false,renovationScore:100},
+  {address:"710 NARBERTH AVE, VILLANOVA, PA 19085",owner:"PHILLIPS, DOUGLAS R & JOAN",beds:5,baths:4.0,sqft:4150,yearBuilt:1984,marketValue:1525000,lastSalePrice:1300000,lastSaleDate:"2017-09-19",permitCount:2,permitDetails:"Building permits on file",lat:40.0395,lng:-75.3575,hasLinkedIn:false,renovationScore:59},
+  {address:"320 SAYBROOK RD, VILLANOVA, PA 19085",owner:"SMITH, JAMES T & ELIZABETH",beds:6,baths:4.0,sqft:4500,yearBuilt:1950,marketValue:1450000,lastSalePrice:1200000,lastSaleDate:"2017-09-08",permitCount:3,permitDetails:"Building permits on file",lat:40.0430,lng:-75.3605,hasLinkedIn:false,renovationScore:100},
+  {address:"88 WOODSTONE LN, VILLANOVA, PA 19085",owner:"MARTINEZ, JUAN C",beds:5,baths:3.0,sqft:3950,yearBuilt:1978,marketValue:1425000,lastSalePrice:1150000,lastSaleDate:"2019-04-11",permitCount:2,permitDetails:"Building permits on record",lat:40.0318,lng:-75.3468,hasLinkedIn:false,renovationScore:67},
+  {address:"811 PENN ST, VILLANOVA, PA 19085",owner:"NELSON, GEORGE W & NANCY",beds:5,baths:3.0,sqft:3900,yearBuilt:1975,marketValue:1425000,lastSalePrice:1175000,lastSaleDate:"2019-01-30",permitCount:2,permitDetails:"Building permits documented",lat:40.0405,lng:-75.3562,hasLinkedIn:false,renovationScore:71},
+  {address:"2021 NEWTOWN RD, VILLANOVA, PA 19085",owner:"YOUNG, CHARLES & PATRICIA",beds:5,baths:3.0,sqft:3850,yearBuilt:1977,marketValue:1415000,lastSalePrice:1200000,lastSaleDate:"2019-05-17",permitCount:2,permitDetails:"Building permits documented",lat:40.0265,lng:-75.3430,hasLinkedIn:false,renovationScore:69},
+  {address:"510 RADNOR CHESTER RD, VILLANOVA, PA 19085",owner:"ROGERS, KENNETH & ANNA",beds:5,baths:3.0,sqft:3825,yearBuilt:1981,marketValue:1405000,lastSalePrice:1175000,lastSaleDate:"2019-07-11",permitCount:2,permitDetails:"Building permits on file",lat:40.0415,lng:-75.3585,hasLinkedIn:false,renovationScore:63},
+  {address:"1624 WASHINGTON LN, VILLANOVA, PA 19085",owner:"MOORE, GEORGE R & DONNA L",beds:5,baths:3.0,sqft:3800,yearBuilt:1976,marketValue:1385000,lastSalePrice:1175000,lastSaleDate:"2019-06-14",permitCount:2,permitDetails:"Building permits documented",lat:40.0348,lng:-75.3528,hasLinkedIn:false,renovationScore:70},
+];
+
+const shoreData = [
+  {address:"315 58th Street, Avalon, NJ 08202",city:"Avalon",zip:"8202",owner:"Vpaq Llc",sqft:4991,yearBuilt:2022,buildingType:"3S-BIG-F",salePrice:9700000,saleDate:"2022-07-27",lastYearTax:52716,zoning:"R-1B",ownerMail:"2100 Cypress St, Philadelphia, PA 19103",lat:39.0990,lng:-74.7135},
+  {address:"107b S Pembroke Ave., Margate City, NJ 08402",city:"Margate City",zip:"8402",owner:"Pembroke Beach Llc",sqft:4279,yearBuilt:2024,buildingType:"3.5SF",salePrice:9300000,saleDate:"2024-12-06",lastYearTax:20821,zoning:"S-40",ownerMail:"Po Box 3193, Margate City, NJ 8402",lat:39.3285,lng:-74.5065},
+  {address:"2 Dolphin Dr, Margate City, NJ 08402",city:"Margate City",zip:"8402",owner:"Dolphin Drive Llc",sqft:4108,yearBuilt:2024,buildingType:"3.5SF",salePrice:6750000,saleDate:"2025-03-18",lastYearTax:19191,zoning:"S-40",ownerMail:"6512 Black Horse Pike, Egg Hbr Twp, NJ 8234",lat:39.3265,lng:-74.5055},
+  {address:"1 108th St, Stone Harbor, NJ 08247",city:"Stone Harbor",zip:"8247",owner:"Wilson, James M Md & Lisa",sqft:2772,yearBuilt:2015,buildingType:"2S-F",salePrice:5800000,saleDate:"2019-08-02",lastYearTax:35284,zoning:"A",ownerMail:"1831 Delancey Pl, Philadelphia, PA 19103",lat:39.0520,lng:-74.7630},
+  {address:"197 63rd Street, Avalon, NJ 08202",city:"Avalon",zip:"8202",owner:"Lesher, Gregory & Allison M",sqft:4853,yearBuilt:2004,buildingType:"3S-FR",salePrice:5700000,saleDate:"2024-07-08",lastYearTax:19377,zoning:"R-1B",ownerMail:"604 W. Hartwell Lane, Philadelphia, PA 19118",lat:39.0940,lng:-74.7130},
+  {address:"35 E 17th Street, Avalon, NJ 08202",city:"Avalon",zip:"8202",owner:"Mahoney, Donald J",sqft:3923,yearBuilt:2017,buildingType:"3S-F",salePrice:5525000,saleDate:"2022-09-15",lastYearTax:18031,zoning:"R-1C",ownerMail:"1825 Delancey Pl, Philadelphia, PA 19103",lat:39.1255,lng:-74.7215},
+  {address:"114 S Rumson Ave, Margate City, NJ 08402",city:"Margate City",zip:"8402",owner:"Bltw Realty Llc",sqft:4247,yearBuilt:2014,buildingType:"2.5SF1G",salePrice:5525000,saleDate:"2019-05-10",lastYearTax:54627,zoning:"S-40",ownerMail:"505 South St, Philadelphia, PA 19147",lat:39.3270,lng:-74.5080},
+  {address:"105 So 29th Ave, Longport, NJ 08403",city:"Longport",zip:"8403",owner:"Stone, Scot & Steven (Trustees)",sqft:3241,yearBuilt:2019,buildingType:"1SF",salePrice:5000000,saleDate:"2025-11-14",lastYearTax:20158,zoning:"RSF1",ownerMail:"9990 Global Rd, Philadelphia, PA 19115",lat:39.2985,lng:-74.5280},
+  {address:"121 So 17th Ave, Longport, NJ 08403",city:"Longport",zip:"8403",owner:"Peruto, A Charles,-Jr",sqft:6831,yearBuilt:1999,buildingType:"2.5SF",salePrice:4750000,saleDate:"2021-02-05",lastYearTax:68346,zoning:"CMH",ownerMail:"2016 Spruce St, Philadelphia, PA 19103",lat:39.2980,lng:-74.5275},
+  {address:"58 E 15th Street, Avalon, NJ 08202",city:"Avalon",zip:"8202",owner:"Hoolehan, James W Ii & Patricia M",sqft:2495,yearBuilt:1983,buildingType:"2S-F-1AG",salePrice:4595000,saleDate:"2026-03-20",lastYearTax:12470,zoning:"R-1C",ownerMail:"1238 Reed St., Philadelphia, PA 19147",lat:39.1240,lng:-74.7210},
+  {address:"182 58th Street, Avalon, NJ 08202",city:"Avalon",zip:"8202",owner:"182 58th Street Llc",sqft:4731,yearBuilt:2009,buildingType:"3S-F",salePrice:4400000,saleDate:"2020-03-27",lastYearTax:23886,zoning:"R-1B",ownerMail:"605 W Gravens Ln, Philadelphia, PA 19118",lat:39.0985,lng:-74.7130},
+  {address:"74 W 37th Street, Avalon, NJ 08202",city:"Avalon",zip:"8202",owner:"Filippone, Edward J & Lisa M",sqft:3478,yearBuilt:1983,buildingType:"3S-F",salePrice:4400000,saleDate:"2020-04-24",lastYearTax:28143,zoning:"R-1C",ownerMail:"2228 S Broad St, Philadelphia, PA 19145",lat:39.1080,lng:-74.7185},
+  {address:"105 So Manor Ave, Longport, NJ 08403",city:"Longport",zip:"8403",owner:"Batoff, Robin (Rev Trust)",sqft:3499,yearBuilt:1990,buildingType:"3SCB2G",salePrice:4300000,saleDate:"2021-03-24",lastYearTax:40098,zoning:"RSF2",ownerMail:"141 S Penn Square #26c, Philadelphia, PA 19102",lat:39.2975,lng:-74.5270},
+  {address:"1809 Beach Terrace, Longport, NJ 08403",city:"Longport",zip:"8403",owner:"Liebman, Samuel & Susan",sqft:4727,yearBuilt:1989,buildingType:"3SF",salePrice:4208000,saleDate:"2008-05-28",lastYearTax:51841,zoning:"RSF1",ownerMail:"1820 Rittenhouse Square, Philadelphia, PA 19103",lat:39.2970,lng:-74.5265},
+  {address:"10015 First Ave, Stone Harbor, NJ 08247",city:"Stone Harbor",zip:"8247",owner:"Storm, Phillip B & Stacey J",sqft:3256,yearBuilt:1969,buildingType:"2S-F-2AG",salePrice:4000000,saleDate:"2020-12-08",lastYearTax:23555,zoning:"A",ownerMail:"2112 Spruce St, Philadelphia, PA 19103",lat:39.0515,lng:-74.7635},
+];
+
+const crmData = [
+  {name:"Tony Hipple",email:"tonyhipple@comcast.net",phone:"(215) 239-7520",address:"239 Ridge Avenue",city:"Newtown",state:"PA",zip:"18940",linkedIn:"https://www.linkedin.com/in/treinert",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.2497,lng:-74.8887},
+  {name:"Nick Kohart",email:"nick.kohart@imacsystems.com",phone:"(215) 378-2699",address:"116 Jane Chapman Dr",city:"Newtown",state:"PA",zip:"18940",linkedIn:"https://www.linkedin.com/in/nicholas-kohart-a7337927",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.2317,lng:-74.9267},
+  {name:"Denise Pryce",email:"fruitveg@comcast.net",phone:"(267) 992-7107",address:"2749 Miriam Avenue",city:"Roslyn",state:"PA",zip:"19001",linkedIn:"https://www.linkedin.com/in/denise-kypke",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1144,lng:-75.1253},
+  {name:"June Henry",email:"herderj@verizon.net",phone:"(267) 414-7638",address:"816 E Sharpnack St",city:"Philadelphia",state:"PA",zip:"19103",linkedIn:"https://www.linkedin.com/in/june-wang-479b9479",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.0631,lng:-75.1890},
+  {name:"Dan Levin",email:"dlevin@janney.com",phone:"215.619.3923",address:"1767 Sentry Pkwy W Suite 110",city:"Blue Bell",state:"PA",zip:"19422",linkedIn:"https://www.linkedin.com/in/dan-wolfgang-janney",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1486,lng:-75.2723},
+  {name:"Todd Hewish",email:"todd@nolanpainting.com",phone:"(215) 906-2006",address:"946 Avenue D",city:"Langhorne",state:"PA",zip:"19047",linkedIn:"https://www.linkedin.com/in/todd-carlin",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1768,lng:-74.9276},
+  {name:"Anna McMenamin",email:"anna@stylinggypsy.com",phone:"(703) 732-4800",address:"1408 Gypsy Hill Road",city:"Gwynedd Valley",state:"PA",zip:"19437",linkedIn:"https://www.linkedin.com/in/anna-mcmenamin-59066223",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1853,lng:-75.2561},
+  {name:"Maryana Garbuz",email:"maryana@cecresearch.com",phone:"(908) 967-6790",address:"1065 Woodland Avenue",city:"Plainfield",state:"NJ",zip:"07060",linkedIn:"https://www.linkedin.com/in/maryanakaplan",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.6397,lng:-74.4024},
+  {name:"Mary & Phil Arndtsen-Dahlin",email:"marndtsen@comcast.net",phone:"(610) 745-3070",address:"118 Lakeview Dr",city:"New Hope",state:"PA",zip:"18938",linkedIn:"https://www.linkedin.com/in/mary-arndtsen-0975697",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.3668,lng:-74.9493},
+  {name:"Kathleen Hunsicker",email:"kathhunsicker@comcast.net",phone:"(215) 901-3500",address:"48 Cadwalader Ct",city:"Lower Gwynedd",state:"PA",zip:"19002",linkedIn:"https://www.linkedin.com/in/kathleen-holden-3b970356",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1729,lng:-75.2360},
+  {name:"Dan Holder",email:"holderdan@comcast.net",phone:"(610) 389-6041",address:"1447 Whitwood Drive",city:"Blue Bell",state:"PA",zip:"19422",linkedIn:"https://www.linkedin.com/in/danvfederico",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1476,lng:-75.2743},
+  {name:"Jennifer Kibblehouse",email:"jennkibb@verizon.net",phone:"(267) 614-1271",address:"809 Foxfield Road",city:"Ambler",state:"PA",zip:"19002",linkedIn:"https://www.linkedin.com/in/jennifer-sherlock-mba-41110120/",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1583,lng:-75.2299},
+  {name:"Judy DeLello",email:"judy@isisupport.com",phone:"(610) 283-4335",address:"2533 Stony Creek Road",city:"Lansdale",state:"PA",zip:"19446",linkedIn:"https://www.linkedin.com/in/judy-delello-6aa639a",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.2465,lng:-75.2785},
+  {name:"Maryann Schultz",email:"missy.schultz@verizon.net",phone:"(267) 474-5185",address:"57 Meade Rd",city:"Ambler",state:"PA",zip:"19002",linkedIn:"https://www.linkedin.com/in/maryann-reyes-95148b122",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1523,lng:-75.2239},
+  {name:"Lee Tanner",email:"leetanner@comcast.net",phone:"(215) 620-4311",address:"604 Creek Lane",city:"Flourtown",state:"PA",zip:"19031",linkedIn:"https://www.linkedin.com/in/lee-russakoff-3157b215",hasEmail:true,hasPhone:true,hasLinkedIn:true,lat:40.1102,lng:-75.2160},
+];
+
+// ─── STATE ───────────────────────────────────────────
+let currentView = 'overview';
+let mapLayer = 'pins';
+let mapInstance = null;
+let markerLayer = null;
+let heatLayer = null;
+let activeSegment = 'all';
+let sortState = {crm:{col:null,asc:true},vil:{col:null,asc:true},shore:{col:null,asc:true}};
+let chartsBuilt = false;
+
+// ─── INIT ─────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  renderCRMTable();
+  renderVilTable();
+  renderShoreTable();
+  renderRenoScores();
+  updateSideSummary();
+});
+
+// ─── NAVIGATION ───────────────────────────────────────
+function switchView(v) {
+  currentView = v;
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const tabs = {overview:0,map:1,crm:2,villanova:3,shore:4,analytics:5};
+  document.querySelectorAll('.tab-btn')[tabs[v]].classList.add('active');
+  if (v === 'map' && !mapInstance) initMap();
+  if (v === 'analytics' && !chartsBuilt) { chartsBuilt = true; buildCharts(); }
+  document.querySelector('#sv-dropdown').classList.remove('open');
+}
+
+// ─── SAVED VIEWS ─────────────────────────────────────
+function toggleSavedViews() {
+  document.getElementById('sv-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.topbar-right')) document.getElementById('sv-dropdown').classList.remove('open');
+});
+
+function loadSavedView(key) {
+  document.getElementById('sv-dropdown').classList.remove('open');
+  if (key === 'case1') {
+    switchView('crm');
+  } else if (key === 'case2') {
+    switchView('villanova');
+    document.getElementById('vil-permit-filter').value = '';
+    renderVilTable();
+  } else if (key === 'case3') {
+    switchView('shore');
+    document.getElementById('shore-city-filter').value = 'Avalon';
+    renderShoreTable();
+  } else if (key === 'heatmap') {
+    switchView('map');
+    setTimeout(() => { setMapLayer('heat'); }, 300);
+  }
+}
+
+// ─── FILTERS ─────────────────────────────────────────
+function filterSegment(seg) {
+  activeSegment = seg;
+  document.querySelectorAll('.segment-chip').forEach(el => el.classList.remove('active'));
+  document.getElementById('seg-'+seg).classList.add('active');
+  updateSideSummary();
+}
+
+function applyFilters() { updateSideSummary(); }
+
+function updateRangeLabel(el, labelId) {
+  const v = parseInt(el.value);
+  const label = document.getElementById(labelId);
+  if (labelId === 'filter-value-label') label.textContent = '$'+v.toLocaleString();
+  else label.textContent = v;
+}
+
+function updateSideSummary() {
+  let total = 45, emails = 15, li = 13;
+  if (activeSegment === 'crm') { total = 15; emails = 15; li = 15; }
+  else if (activeSegment === 'vil') { total = 15; emails = 0; li = 0; }
+  else if (activeSegment === 'shore') { total = 15; emails = 0; li = 0; }
+  document.getElementById('side-total').textContent = total;
+  document.getElementById('side-email').textContent = emails;
+  document.getElementById('side-linkedin').textContent = li;
+}
+
+// ─── MAP ──────────────────────────────────────────────
+function initMap() {
+  mapInstance = L.map('leaflet-map').setView([39.8, -74.95], 8);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }).addTo(mapInstance);
+  renderMapPins();
+}
+
+function makeIcon(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>`,
+    iconSize: [14,14], iconAnchor: [7,7]
+  });
+}
+
+function renderMapPins() {
+  if (markerLayer) { mapInstance.removeLayer(markerLayer); markerLayer = null; }
+  if (heatLayer) { mapInstance.removeLayer(heatLayer); heatLayer = null; }
+  markerLayer = L.layerGroup();
+  const all = [
+    ...vilData.map(d => ({...d, seg:'vil', color:'#0a1b30'})),
+    ...shoreData.map(d => ({...d, seg:'shore', color:'#14A870'})),
+    ...crmData.map(d => ({...d, seg:'crm', color:'#E8A020'})),
+  ];
+  all.forEach(d => {
+    const m = L.marker([d.lat, d.lng], {icon: makeIcon(d.color)});
+    m.on('click', () => showInfoPanel(d));
+    m.bindTooltip(d.address || d.name, {className:'lft-popup', offset:[8,0]});
+    markerLayer.addLayer(m);
+  });
+  markerLayer.addTo(mapInstance);
+}
+
+function renderHeatmap() {
+  if (markerLayer) { mapInstance.removeLayer(markerLayer); markerLayer = null; }
+  if (heatLayer) { mapInstance.removeLayer(heatLayer); heatLayer = null; }
+  const pts = [
+    ...vilData.map(d => [d.lat, d.lng, 0.8]),
+    ...shoreData.map(d => [d.lat, d.lng, 1.0]),
+    ...crmData.map(d => [d.lat, d.lng, 0.6]),
+  ];
+  heatLayer = L.heatLayer(pts, {radius:35, blur:25, maxZoom:12, gradient:{0.4:'#0a1b30',0.6:'#E8A020',0.8:'#FF5733',1.0:'#FF1A1A'}});
+  heatLayer.addTo(mapInstance);
+}
+
+function setMapLayer(layer) {
+  mapLayer = layer;
+  document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-'+layer).classList.add('active');
+  if (!mapInstance) return;
+  if (layer === 'heat') {
+    renderHeatmap();
+    document.getElementById('map-legend').style.display = 'none';
+  } else if (layer === 'satellite') {
+    if (heatLayer) mapInstance.removeLayer(heatLayer);
+    if (!markerLayer) renderMapPins();
+    else markerLayer.addTo(mapInstance);
+    document.getElementById('map-legend').style.display = 'block';
+    mapInstance.eachLayer(l => { if (l._url && l._url.includes('openstreetmap')) mapInstance.removeLayer(l); });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution:'Esri World Imagery', maxZoom:19
+    }).addTo(mapInstance);
+  } else {
+    if (heatLayer) mapInstance.removeLayer(heatLayer);
+    mapInstance.eachLayer(l => { if (l._url) mapInstance.removeLayer(l); });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'© OpenStreetMap', maxZoom:19}).addTo(mapInstance);
+    renderMapPins();
+    document.getElementById('map-legend').style.display = 'block';
+  }
+}
+
+function showInfoPanel(d) {
+  const panel = document.getElementById('info-panel');
+  const title = document.getElementById('info-title');
+  const body = document.getElementById('info-body');
+  title.textContent = d.address || d.name;
+  let html = '';
+  if (d.seg === 'vil') {
+    const pb = d.permitCount === 0 ? 'none' : d.permitCount <= 1 ? 'some' : 'many';
+    const pbl = d.permitCount === 0 ? 'No Permits' : d.permitCount + ' Permit(s)';
+    html = `
+      <div class="info-row"><span class="info-key">Owner</span><span class="info-val">${d.owner}</span></div>
+      <div class="info-row"><span class="info-key">Built</span><span class="info-val">${d.yearBuilt}</span></div>
+      <div class="info-row"><span class="info-key">Size</span><span class="info-val">${d.beds} bed / ${d.baths} bath · ${d.sqft.toLocaleString()} sq ft</span></div>
+      <div class="info-row"><span class="info-key">Market Value</span><span class="info-val">$${d.marketValue.toLocaleString()}</span></div>
+      <div class="info-row"><span class="info-key">Last Sale</span><span class="info-val">$${d.lastSalePrice.toLocaleString()} · ${d.lastSaleDate}</span></div>
+      <div class="info-row"><span class="info-key">Permits</span><span class="info-val"><span class="permit-badge ${pb}">${pbl}</span></span></div>
+      <div class="info-row"><span class="info-key">Reno Score</span><span class="info-val">${d.renovationScore}/100</span></div>
+      <div class="satellite-note">💡 Use Satellite layer to view this property from aerial imagery.</div>`;
+  } else if (d.seg === 'shore') {
+    html = `
+      <div class="info-row"><span class="info-key">Owner</span><span class="info-val">${d.owner}</span></div>
+      <div class="info-row"><span class="info-key">City</span><span class="info-val">${d.city}</span></div>
+      <div class="info-row"><span class="info-key">Built</span><span class="info-val">${d.yearBuilt}</span></div>
+      <div class="info-row"><span class="info-key">Sq Ft</span><span class="info-val">${d.sqft.toLocaleString()}</span></div>
+      <div class="info-row"><span class="info-key">Sale Price</span><span class="info-val">$${d.salePrice.toLocaleString()}</span></div>
+      <div class="info-row"><span class="info-key">Annual Tax</span><span class="info-val">$${d.lastYearTax.toLocaleString()}</span></div>
+      <div class="info-row"><span class="info-key">Owner Mail</span><span class="info-val" style="max-width:160px">${d.ownerMail||'—'}</span></div>
+      <div class="satellite-note">💡 Owner's primary address: ${d.ownerMail ? d.ownerMail.split(',').slice(-2).join(',').trim() : '—'}</div>`;
+  } else {
+    html = `
+      <div class="info-row"><span class="info-key">Name</span><span class="info-val">${d.name}</span></div>
+      <div class="info-row"><span class="info-key">Email</span><span class="info-val">${d.email}</span></div>
+      <div class="info-row"><span class="info-key">Phone</span><span class="info-val">${d.phone}</span></div>
+      <div class="info-row"><span class="info-key">City</span><span class="info-val">${d.city}, ${d.state}</span></div>
+      <div class="info-row"><span class="info-key">LinkedIn</span><span class="info-val"><a href="${d.linkedIn}" target="_blank" style="color:var(--accent)">View Profile</a></span></div>`;
+  }
+  body.innerHTML = html;
+  panel.classList.add('visible');
+}
+
+function closeInfoPanel() {
+  document.getElementById('info-panel').classList.remove('visible');
+}
+
+// ─── TABLES ───────────────────────────────────────────
+function fmt$(n) { return n ? '$'+Number(n).toLocaleString() : '—'; }
+
+function renderCRMTable() {
+  const q = (document.getElementById('crm-search').value||'').toLowerCase();
+  let rows = crmData.filter(d => !q || (d.name+d.city+d.email+d.state).toLowerCase().includes(q));
+  const tbody = document.getElementById('crm-tbody');
+  tbody.innerHTML = rows.map(d => `<tr>
+    <td>${d.name}</td>
+    <td>${d.city}</td>
+    <td>${d.state}</td>
+    <td style="font-size:11px">${d.email}</td>
+    <td style="font-size:11px">${d.phone}</td>
+    <td>${d.hasEmail?'<span class="pill pill-blue">Email</span> ':''} ${d.hasPhone?'<span class="pill pill-green">Phone</span> ':''} ${d.hasLinkedIn?'<span class="pill pill-gold">LinkedIn</span>':''}</td>
+    <td>${d.linkedIn ? `<a href="${d.linkedIn}" target="_blank" style="color:var(--accent);font-size:11px">View →</a>` : '—'}</td>
+  </tr>`).join('');
+  document.getElementById('crm-count').textContent = rows.length + ' contacts';
+}
+
+function renderVilTable() {
+  const q = (document.getElementById('vil-search').value||'').toLowerCase();
+  const pf = document.getElementById('vil-permit-filter').value;
+  let rows = vilData.filter(d => {
+    if (q && !(d.address+d.owner).toLowerCase().includes(q)) return false;
+    if (pf === '0' && d.permitCount !== 0) return false;
+    if (pf === '1' && d.permitCount !== 1) return false;
+    if (pf === '2' && d.permitCount < 2) return false;
+    if (pf === '3' && d.permitCount < 3) return false;
+    return true;
+  });
+  const tbody = document.getElementById('vil-tbody');
+  tbody.innerHTML = rows.map(d => {
+    const pb = d.permitCount === 0 ? 'pill-orange' : d.permitCount <= 1 ? 'pill-gold' : 'pill-green';
+    const rs = d.renovationScore;
+    const rsColor = rs >= 80 ? '#FF5733' : rs >= 60 ? '#E8A020' : '#14A870';
+    return `<tr onclick="switchView('map')">
+      <td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.address}</td>
+      <td style="font-size:11px">${d.owner}</td>
+      <td>${d.yearBuilt}</td>
+      <td>${d.sqft.toLocaleString()}</td>
+      <td>${d.beds}bd / ${d.baths}ba</td>
+      <td>${fmt$(d.marketValue)}</td>
+      <td><span class="pill ${pb}">${d.permitCount} permit${d.permitCount!==1?'s':''}</span></td>
+      <td><span style="font-size:12px;font-weight:600;color:${rsColor}">${rs}</span><span style="font-size:10px;color:var(--mist)">/100</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('vil-count').textContent = rows.length + ' properties';
+}
+
+function renderShoreTable() {
+  const q = (document.getElementById('shore-search').value||'').toLowerCase();
+  const cf = document.getElementById('shore-city-filter').value;
+  let rows = shoreData.filter(d => {
+    if (q && !(d.address+d.owner+d.city).toLowerCase().includes(q)) return false;
+    if (cf && d.city !== cf) return false;
+    return true;
+  });
+  const tbody = document.getElementById('shore-tbody');
+  tbody.innerHTML = rows.map(d => {
+    const mailState = d.ownerMail ? (d.ownerMail.includes(', PA') ? '<span class="pill pill-blue">PA</span>' : '<span class="pill pill-grey">Other</span>') : '—';
+    return `<tr>
+      <td style="max-width:220px;font-size:11px">${d.address}</td>
+      <td>${d.city}</td>
+      <td style="font-size:11px">${d.owner}</td>
+      <td>${d.sqft ? d.sqft.toLocaleString() : '—'}</td>
+      <td>${d.yearBuilt||'—'}</td>
+      <td>${fmt$(d.salePrice)}</td>
+      <td>${fmt$(d.lastYearTax)}</td>
+      <td>${mailState}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('shore-count').textContent = rows.length + ' properties';
+}
+
+// ─── SORT ─────────────────────────────────────────────
+function sortTable(seg, col) {
+  const s = sortState[seg];
+  s.asc = s.col === col ? !s.asc : true;
+  s.col = col;
+  if (seg === 'crm') { crmData.sort((a,b) => sortVal(a[col],b[col],s.asc)); renderCRMTable(); }
+  if (seg === 'vil') { vilData.sort((a,b) => sortVal(a[col],b[col],s.asc)); renderVilTable(); }
+  if (seg === 'shore') { shoreData.sort((a,b) => sortVal(a[col],b[col],s.asc)); renderShoreTable(); }
+}
+function sortVal(a,b,asc) {
+  if (a == null) return 1; if (b == null) return -1;
+  return asc ? (a > b ? 1 : -1) : (a < b ? 1 : -1);
+}
+
+// ─── EXPORT ───────────────────────────────────────────
+function exportCSV(seg) {
+  let data, headers;
+  if (seg === 'crm') {
+    headers = ['Name','Email','Phone','Address','City','State','Zip','LinkedIn'];
+    data = crmData.map(d => [d.name,d.email,d.phone,d.address,d.city,d.state,d.zip,d.linkedIn]);
+  } else if (seg === 'vil') {
+    headers = ['Address','Owner','Year Built','Sq Ft','Beds','Baths','Market Value','Last Sale Price','Last Sale Date','Permit Count'];
+    data = vilData.map(d => [d.address,d.owner,d.yearBuilt,d.sqft,d.beds,d.baths,d.marketValue,d.lastSalePrice,d.lastSaleDate,d.permitCount]);
+  } else {
+    headers = ['Address','City','Owner','Sq Ft','Year Built','Sale Price','Last Year Tax','Owner Mail'];
+    data = shoreData.map(d => [d.address,d.city,d.owner,d.sqft,d.yearBuilt,d.salePrice,d.lastYearTax,d.ownerMail]);
+  }
+  const csv = [headers, ...data].map(r => r.map(v => `"${v||''}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = `harth-${seg}-export.csv`;
+  a.click();
+}
+
+// ─── RENO SCORES ──────────────────────────────────────
+function renderRenoScores() {
+  const top5 = [...vilData].sort((a,b) => b.renovationScore - a.renovationScore).slice(0,5);
+  const el = document.getElementById('reno-score-list');
+  el.innerHTML = top5.map(d => {
+    const w = d.renovationScore;
+    const c = w >= 80 ? '#FF5733' : w >= 60 ? '#E8A020' : '#14A870';
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="color:var(--ink);font-weight:500">${d.address.split(',')[0]}</span>
+        <span style="color:${c};font-weight:600">${w}</span>
+      </div>
+      <div style="background:var(--paper);border-radius:4px;height:5px;overflow:hidden">
+        <div style="width:${w}%;background:${c};height:100%;border-radius:4px;transition:width 0.6s ease"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── CHARTS ───────────────────────────────────────────
+function buildCharts() {
+  const font = "'DM Sans', sans-serif";
+  const grid = { color: '#E2E5EC' };
+  const tick = { color: '#8A95A8', font: { family: font, size: 11 } };
+
+  // 1. Villanova Market Values
+  const vLabels = vilData.map(d => d.address.split(',')[0].replace(/^\d+ /,'').substring(0,16));
+  new Chart(document.getElementById('chart-vil-val'), {
+    type: 'bar',
+    data: { labels: vLabels, datasets: [{ data: vilData.map(d => d.marketValue/1e6), backgroundColor: '#0a1b30', borderRadius: 4, borderSkipped: false }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{...tick,maxRotation:45},grid:grid},y:{ticks:{...tick,callback:v=>`$${v.toFixed(1)}M`},grid:grid}} }
+  });
+
+  // 2. Year Built vs Permit Count
+  new Chart(document.getElementById('chart-vil-permits'), {
+    type: 'scatter',
+    data: { datasets: [{ data: vilData.map(d => ({x:d.yearBuilt,y:d.permitCount})), backgroundColor:'#0a1b30', pointRadius:7, pointHoverRadius:9 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw.x}: ${c.raw.y} permit(s)`}}}, scales:{x:{ticks:tick,grid:grid,title:{display:true,text:'Year Built',color:'#8A95A8',font:{family:font}}},y:{ticks:{...tick,stepSize:1},grid:grid,title:{display:true,text:'Permit Count',color:'#8A95A8',font:{family:font}}}} }
+  });
+
+  // 3. Shore Sale Prices by City
+  const cities = ['Avalon','Margate City','Stone Harbor','Longport'];
+  const cityAvg = cities.map(c => {
+    const props = shoreData.filter(d => d.city === c);
+    return props.length ? props.reduce((s,d) => s+d.salePrice, 0)/props.length : 0;
+  });
+  new Chart(document.getElementById('chart-shore-city'), {
+    type: 'bar',
+    data: { labels: cities, datasets: [{ data: cityAvg.map(v=>v/1e6), backgroundColor: ['#14A870','#0a1b30','#E8A020','#FF5733'], borderRadius: 6, borderSkipped: false }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:tick,grid:grid},y:{ticks:{...tick,callback:v=>`$${v.toFixed(1)}M`},grid:grid}} }
+  });
+
+  // 4. CRM Channel Coverage
+  const emailCount = crmData.filter(d=>d.hasEmail).length;
+  const phoneCount = crmData.filter(d=>d.hasPhone).length;
+  const liCount = crmData.filter(d=>d.hasLinkedIn).length;
+  new Chart(document.getElementById('chart-crm-channels'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Email Only','Email + Phone','All Three (Email+Phone+LinkedIn)'],
+      datasets: [{ data: [emailCount-phoneCount, phoneCount-liCount, liCount], backgroundColor: ['#C2D0FF','#0a1b30','#0A2E99'], borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{family:font,size:11},color:'#3B4556',padding:12}}} }
+  });
+
+  // 5. Shore mail states
+  const paCount = shoreData.filter(d => d.ownerMail && d.ownerMail.includes(', PA')).length;
+  const otherCount = shoreData.length - paCount;
+  new Chart(document.getElementById('chart-shore-mail'), {
+    type: 'bar',
+    data: {
+      labels: ['PA (Philly-area)', 'Other / NJ Local'],
+      datasets: [{ data: [paCount, otherCount], backgroundColor: ['#14A870','#C8CDD8'], borderRadius: 6, borderSkipped: false }]
+    },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{...tick,stepSize:1},grid:grid,max:15},y:{ticks:tick,grid:{display:false}}} }
+  });
+}
+</script>
+</body>
+</html>
